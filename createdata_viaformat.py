@@ -47,13 +47,6 @@ def image_on_background(img):
 
 def get_dict(passport, hull, have_object=True):
     """
-
-    :param passport: ndarray of rotated passport
-    :param hull: convexHull of contour of object
-    :param have_object: passport or non_passport
-    :return:
-    """
-    """
     {"24631331976_defa3bb61f_k.jpg668058":{
         "fileref":"",
         "size":668058,
@@ -81,19 +74,17 @@ def get_dict(passport, hull, have_object=True):
     size = h * w
     all_points_x = list([int(x[0][0]) for x in hull])
     all_points_y = list([int(x[0][1]) for x in hull])
-    if have_object:
-        dict = {"fileref": "", "size": size, "filename": img_name, "base64_img_data": "", "file_attributes": {},
-                "regions": {
-                    "0": {
-                        "shape_attributes": {"name": "polygon", "all_points_x": all_points_x,
-                                             "all_points_y": all_points_y},
-                        "region_attributes": {}}}}
-    else:
-        dict = {"fileref": "", "size": size, "filename": img_name, "base64_img_data": "", "file_attributes": {},
-                "regions": {}}
+    dict = {"fileref": "", "size": size, "filename": img_name, "base64_img_data": "", "file_attributes": {},
+            "regions": {
+                "0": {
+                    "category_id": 0,
+                    "shape_attributes": {"name": "polygon", "all_points_x": all_points_x, "all_points_y": all_points_y},
+                    "region_attributes": {}}}}
+
+    if not have_object:
+        dict["regions"]["0"]["category_id"] = 1
 
     result[img_name + str(size)] = dict
-
     return img_name, result
 
 
@@ -104,7 +95,6 @@ def create_eachfolder_data(folder, count):
     os.mkdir(folder)
 
     dict = {}
-    # passport
     for _ in range(count):
         passport = cv2.imread(random.choice(glob.glob("real_passport/*.jpg")))
         # resize smaller
@@ -114,11 +104,11 @@ def create_eachfolder_data(folder, count):
         # rotate image
         rotated = rotate_image(passport)
         passport, mask, hull = image_on_background(rotated)
-        img_name, img_dict = get_dict(passport, hull, have_object=True)
+        img_name, img_dict = get_dict(passport, hull)
         cv2.imwrite(os.path.join(folder, img_name), passport)
+        # cv2.imwrite(os.path.join("mask", img_name), mask)
         dict.update(img_dict)
 
-    # non passport
     for _ in range(count):
         non_passport = cv2.imread(random.choice(glob.glob("non_passport/*.jpg")))
         # resize smaller
@@ -142,9 +132,13 @@ def create_data_cocoformat(count):
     :param count:
     :return:
     """
-
-    create_eachfolder_data("train", count)
-    create_eachfolder_data("val", count / 8)
+    des_folder = "balloon"
+    if os.path.exists(des_folder):
+        shutil.rmtree(des_folder)
+    os.mkdir(des_folder)
+    create_eachfolder_data(os.path.join(des_folder, "train"), count)
+    create_eachfolder_data(os.path.join(des_folder, "val"), count / 8)
+    # shutil.make_archive("balloon_dataset", "zip", des_folder)
 
 
 #    python3.6 balloon.py train --dataset=../../dataset/balloon --weight=../../dataset/balloon/mask_rcnn_balloon.h5
